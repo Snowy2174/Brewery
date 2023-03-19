@@ -218,7 +218,12 @@ public class BRecipe {
 					continue;
 				} else {
 					// TODO Maybe load later ie on first use of recipe?
-					P.p.errorLog(recipeId + ": Could not Find Plugin: " + ingredParts[1]);
+					if(ingredParts.length == 1){
+						P.p.errorLog(recipeId + ": Could not Find Plugin: " + ingredParts[0]);
+					}
+					else{
+						P.p.errorLog(recipeId + ": Could not Find Plugin: " + ingredParts[1]);
+					}
 					return null;
 				}
 			}

@@ -12,6 +12,7 @@ import com.dre.brewery.integration.barrel.WGBarrel5;
 import com.dre.brewery.integration.barrel.WGBarrel6;
 import com.dre.brewery.integration.barrel.WGBarrel7;
 import com.dre.brewery.integration.item.BreweryPluginItem;
+import com.dre.brewery.integration.item.ItemsAdderPluginItem;
 import com.dre.brewery.integration.item.MMOItemsPluginItem;
 import com.dre.brewery.integration.item.SlimefunPluginItem;
 import com.dre.brewery.recipe.BCauldronRecipe;
@@ -202,6 +203,7 @@ public class BConfig {
 		PluginManager plMan = p.getServer().getPluginManager();
 
 		// Third-Party
+		//useIA = config.getBoolean("useItemsAdder", true) && plMan.isPluginEnabled("ItemsAdder");
 		useWG = config.getBoolean("useWorldGuard", true) && plMan.isPluginEnabled("WorldGuard");
 		useLWC = config.getBoolean("useLWC", true) && plMan.isPluginEnabled("LWC");
 		useTowny = config.getBoolean("useTowny", true) && plMan.isPluginEnabled("Towny");
@@ -258,6 +260,7 @@ public class BConfig {
 			loadDataAsync = false;
 		}
 
+		PluginItem.registerForConfig("itemsAdder", ItemsAdderPluginItem::new);
 		PluginItem.registerForConfig("brewery", BreweryPluginItem::new);
 		PluginItem.registerForConfig("mmoitems", MMOItemsPluginItem::new);
 		PluginItem.registerForConfig("slimefun", SlimefunPluginItem::new);
