@@ -2,7 +2,9 @@ package com.dre.brewery;
 
 import com.dre.brewery.api.events.IngedientAddEvent;
 import com.dre.brewery.filedata.BConfig;
+import com.dre.brewery.filedata.CraftedBrewTracker;
 import com.dre.brewery.recipe.BCauldronRecipe;
+import com.dre.brewery.recipe.BRecipe;
 import com.dre.brewery.recipe.RecipeItem;
 import com.dre.brewery.utility.BUtil;
 import com.dre.brewery.utility.LegacyUtil;
@@ -23,6 +25,37 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 public class BCauldron {
+	public enum LiquidType {
+		WATER,
+		LAVA,
+		SNOW;
+
+		public String toString() {
+			switch (this) {
+				case WATER:
+					return "water";
+				case LAVA:
+					return "lava";
+				case SNOW:
+					return "snow";
+				default:
+					return "water";
+			}
+		}
+		public static LiquidType fromString(String string) {
+			switch (string.toLowerCase()) {
+				case "water":
+					return WATER;
+				case "lava":
+					return LAVA;
+				case "snow":
+					return SNOW;
+				default:
+					return WATER;
+			}
+		}
+	}
+
 	public static final byte EMPTY = 0, SOME = 1, FULL = 2;
 	public static final int PARTICLEPAUSE = 15;
 	public static Random particleRandom = new Random();
@@ -60,7 +93,7 @@ public class BCauldron {
 		if (!BUtil.isChunkLoaded(block)) {
 			increaseState();
 		} else {
-			if (!LegacyUtil.isWaterCauldron(block.getType())) {
+			if (LegacyUtil.getCauldronType(block.getType()) == null) {
 				// Catch any WorldEdit etc. removal
 				return false;
 			}
@@ -167,10 +200,21 @@ public class BCauldron {
 			P.p.msg(player, P.p.languageReader.get("Perms_NoCauldronFill"));
 			return true;
 		}
-		ItemStack potion = ingredients.cook(state);
+		ItemStack potion = ingredients.cook(LegacyUtil.getCauldronType(block.getType()), state);
 		if (potion == null) return false;
 
-		if (P.use1_13) {
+		BRecipe cookRecipe = ingredients.getCookRecipe(LegacyUtil.getCauldronType(block.getType()));
+		if (cookRecipe != null) {
+			if (cookRecipe.getOptionalID().isPresent()) {
+				CraftedBrewTracker.playerHasMadeBrew(player.getUniqueId().toString(), cookRecipe.getOptionalID().get());
+			}
+		}
+
+		// lava cauldrons can only do one drink each, so they're always going to drain
+		if (LegacyUtil.getCauldronType(block.getType()) == LiquidType.LAVA) {
+			block.setType(Material.CAULDRON);
+			bcauldrons.remove(block);
+		} else if (P.use1_13) {
 			BlockData data = block.getBlockData();
 			if (!(data instanceof Levelled)) {
 				bcauldrons.remove(block);

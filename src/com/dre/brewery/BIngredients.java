@@ -1,10 +1,12 @@
 package com.dre.brewery;
 
+import com.dre.brewery.BCauldron.LiquidType;
 import com.dre.brewery.api.events.brew.BrewModifyEvent;
 import com.dre.brewery.lore.Base91EncoderStream;
 import com.dre.brewery.lore.BrewLore;
 import com.dre.brewery.recipe.BCauldronRecipe;
 import com.dre.brewery.recipe.BRecipe;
+import com.dre.brewery.recipe.BUserError;
 import com.dre.brewery.recipe.Ingredient;
 import com.dre.brewery.recipe.ItemLoader;
 import com.dre.brewery.recipe.RecipeItem;
@@ -21,6 +23,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Represents ingredients in Cauldron, Brew
@@ -101,7 +104,7 @@ public class BIngredients {
 	/**
 	 * returns an Potion item with cooked ingredients
 	 */
-	public ItemStack cook(int state) {
+	public ItemStack cook(BCauldron.LiquidType liquidType, int state) {
 
 		ItemStack potion = new ItemStack(Material.POTION);
 		PotionMeta potionMeta = (PotionMeta) potion.getItemMeta();
@@ -110,7 +113,7 @@ public class BIngredients {
 		// cookedTime is always time in minutes, state may differ with number of ticks
 		cookedTime = state;
 		String cookedName = null;
-		BRecipe cookRecipe = getCookRecipe();
+		BRecipe cookRecipe = getCookRecipe(liquidType);
 		Brew brew;
 
 		//int uid = Brew.generateUID();
@@ -120,7 +123,7 @@ public class BIngredients {
 			int quality = (int) Math.round((getIngredientQuality(cookRecipe) + getCookingQuality(cookRecipe, false)) / 2.0);
 			int alc = (int) Math.round(cookRecipe.getAlcohol() * ((float) quality / 10.0f));
 			P.p.debugLog("cooked potion has Quality: " + quality + ", Alc: " + alc);
-			brew = new Brew(quality, alc, cookRecipe, this);
+			brew = new Brew(this, quality, alc, (byte)0, quality, alc, liquidType, cookedName, false, false, false, 0);
 			BrewLore lore = new BrewLore(brew, potionMeta);
 			lore.updateQualityStars(false);
 			lore.updateCustomLore();
@@ -134,7 +137,7 @@ public class BIngredients {
 
 		} else {
 			// new base potion
-			brew = new Brew(this);
+			brew = new Brew(this, 0, 0, (byte)0, (float)0.0, (float)0.0, liquidType, null, false, false, false, 0);
 
 			if (state <= 0) {
 				cookedName = P.p.languageReader.get("Brew_ThickBrew");
@@ -206,7 +209,7 @@ public class BIngredients {
 	/**
 	 * best recipe for current state of potion, STILL not always returns the correct one...
 	 */
-	public BRecipe getBestRecipe(float wood, float time, boolean distilled) {
+	public BRecipe getBestRecipe(float wood, float time, boolean distilled, BCauldron.LiquidType liquidType) {
 		float quality = 0;
 		int ingredientQuality;
 		int cookingQuality;
@@ -214,6 +217,12 @@ public class BIngredients {
 		int ageQuality;
 		BRecipe bestRecipe = null;
 		for (BRecipe recipe : BRecipe.getAllRecipes()) {
+			// if they're not even in the right liquid, don't bother...
+			if (liquidType != recipe.getLiquidType()) {
+				P.p.log("Liquid type: " + liquidType + ", recipe liquid type: " + recipe.getLiquidType() + " (" + recipe.getRecipeName() + ")");
+				continue;
+			}
+
 			ingredientQuality = getIngredientQuality(recipe);
 			cookingQuality = getCookingQuality(recipe, distilled);
 
@@ -249,8 +258,8 @@ public class BIngredients {
 	/**
 	 * returns recipe that is cooking only and matches the ingredients and cooking time
 	 */
-	public BRecipe getCookRecipe() {
-		BRecipe bestRecipe = getBestRecipe(0, 0, false);
+	public BRecipe getCookRecipe(BCauldron.LiquidType liquidType) {
+		BRecipe bestRecipe = getBestRecipe(0, 0, false, liquidType);
 
 		// Check if best recipe is cooking only
 		if (bestRecipe != null) {
@@ -285,8 +294,8 @@ public class BIngredients {
 	/**
 	 * returns the currently best matching recipe for distilling for the ingredients and cooking time
 	 */
-	public BRecipe getDistillRecipe(float wood, float time) {
-		BRecipe bestRecipe = getBestRecipe(wood, time, true);
+	public BRecipe getDistillRecipe(float wood, float time, BCauldron.LiquidType liquidType) {
+		BRecipe bestRecipe = getBestRecipe(wood, time, true, liquidType);
 
 		// Check if best recipe needs to be destilled
 		if (bestRecipe != null) {
@@ -297,11 +306,68 @@ public class BIngredients {
 		return null;
 	}
 
+	public List<BUserError> getErrorsForRecipe(float wood, float time, boolean distilled, BRecipe recipe) {
+		List<BUserError> errors = new ArrayList<BUserError>();
+
+		for (Ingredient ingredient : ingredients) {
+			int amountInRecipe = recipe.amountOf(ingredient);
+			int amount = ingredient.getAmount();
+
+			if (amountInRecipe == 0 && amount > 0) {
+				errors.add(new BUserError.BadIngredientKindError(ingredient));
+			} else if (amountInRecipe != amount) {
+				errors.add(new BUserError.IngredientQuantityError(recipe.recipeItemFor(ingredient), amount));
+			}
+		}
+		for (RecipeItem ingredient : recipe.getIngredients()) {
+			if (!ingredients.stream().anyMatch(ing -> ingredient.matches(ing))) {
+				errors.add(new BUserError.MissingIngredientKindError(ingredient));
+			}
+		}
+		if (recipe.needsDistilling() != distilled) {
+			errors.add(new BUserError.DistillationError(distilled, recipe.needsDistilling()));
+		}
+
+		return errors;
+	}
+
+	/**
+	 #* @see getErrorsForRecipe
+	 * @return A random list of errors from a close random recipe
+	 */
+	public List<BUserError> getErrors(float wood, float time, boolean distilled) {
+		List<List<BUserError>> matchingRecipes = new ArrayList<List<BUserError>>();
+		int mostErrors = Integer.MAX_VALUE;
+
+		for (BRecipe recipe : BRecipe.getAllRecipes()) {
+			List<BUserError> errors = getErrorsForRecipe(wood, time, distilled, recipe);
+			if (errors.size() < mostErrors) {
+				mostErrors = errors.size();
+				matchingRecipes = new ArrayList<List<BUserError>>(){{add(errors);}};
+			} else if (errors.size() == mostErrors) {
+				matchingRecipes.add(errors);
+			}
+		}
+
+		assert matchingRecipes.size() > 0 : "we must have at least 1 matching recipe";
+		return matchingRecipes.get(ThreadLocalRandom.current().nextInt(matchingRecipes.size()));
+	}
+
+	/**
+	 #* @see getErrors
+	 * @return A random error from a close random recipe
+	 */
+	public BUserError getError(float wood, float time, boolean distilled) {
+		List<BUserError> errors = getErrors(wood, time, distilled);
+
+		return errors.get(ThreadLocalRandom.current().nextInt(errors.size()));
+	}
+
 	/**
 	 * returns currently best matching recipe for ingredients, cooking- and ageingtime
 	 */
-	public BRecipe getAgeRecipe(float wood, float time, boolean distilled) {
-		BRecipe bestRecipe = getBestRecipe(wood, time, distilled);
+	public BRecipe getAgeRecipe(float wood, float time, boolean distilled, BCauldron.LiquidType liquidType) {
+		BRecipe bestRecipe = getBestRecipe(wood, time, distilled, liquidType);
 
 		if (bestRecipe != null) {
 			if (bestRecipe.needsToAge()) {
@@ -465,12 +531,12 @@ public class BIngredients {
 		}
 	}
 
-	public static BIngredients load(DataInputStream in, short dataVersion) throws IOException {
+	public static BIngredients load(DataInputStream in) throws IOException {
 		int cookedTime = in.readInt();
 		byte size = in.readByte();
 		List<Ingredient> ing = new ArrayList<>(size);
 		for (; size > 0; size--) {
-			ItemLoader itemLoader = new ItemLoader(dataVersion, in, in.readUTF());
+			ItemLoader itemLoader = new ItemLoader(in, in.readUTF());
 			if (!P.p.ingredientLoaders.containsKey(itemLoader.getSaveID())) {
 				P.p.errorLog("Ingredient Loader not found: " + itemLoader.getSaveID());
 				break;

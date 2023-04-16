@@ -17,4 +17,9 @@ public class ItemsAdderPluginItem extends PluginItem {
 
 		return false;
 	}
+
+	@Override
+	public String displayName() {
+		return getItemId();
+	}
 }

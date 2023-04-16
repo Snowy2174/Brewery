@@ -5,7 +5,7 @@
 	<groupId>com.dre</groupId>
 	<artifactId>Brewery_BMC</artifactId>
 	<version>3.1.1</version>
-	<name>Brewery</name>
+	<name>BreweryBMC</name>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -23,6 +23,7 @@
 				<directory>${project.basedir}/resources</directory>
 				<includes>
 					<include>**/*.yml</include>
+					<include>**/*.po</include>
 					<include>**/*.txt</include>
 				</includes>
 				<excludes>
@@ -34,20 +35,44 @@
 
 		<plugins>
 			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.8</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.22.0</version>
+			</plugin>
+
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.10.1</version>
 				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-					<encoding>UTF-8</encoding>
+					<release>17</release>
 				</configuration>
 			</plugin>
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.2.1</version>
+				<version>3.3.0</version>
 				<executions>
 					<execution>
 						<phase>package</phase>
@@ -64,6 +89,38 @@
 								<relocation>
 									<pattern>org.bstats</pattern>
 									<shadedPattern>com.dre.brewery.integration.bstats</shadedPattern>
+								</relocation>
+							</relocations>
+						</configuration>
+					</execution>
+					<execution>
+						<id>shade-if</id>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
+							<relocations>
+								<relocation>
+									<pattern>com.github.stefvanschie.inventoryframework</pattern>
+									<shadedPattern>com.dre.inventoryframework</shadedPattern>
+								</relocation>
+							</relocations>
+						</configuration>
+					</execution>
+					<execution>
+						<id>shade-gettext</id>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
+							<relocations>
+								<relocation>
+									<pattern>org.mini2Dx.gettext</pattern>
+									<shadedPattern>com.dre.gettext</shadedPattern>
 								</relocation>
 							</relocations>
 						</configuration>
@@ -96,6 +153,10 @@
 		</plugins>
 	</build>
 	<repositories>
+		<repository>
+			<id>papermc</id>
+			<url>https://repo.papermc.io/repository/maven-public/</url>
+		</repository>
 		<repository>
 			<id>md_5-public</id>
 			<url>https://repo.md-5.net/content/groups/public/</url>
@@ -145,7 +206,44 @@
 
 	</repositories>
 
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.junit</groupId>
+				<artifactId>junit-bom</artifactId>
+				<version>5.9.2</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>com.github.seeseemelk</groupId>
+			<artifactId>MockBukkit-v1.19</artifactId>
+			<version>2.29.0</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>com.github.stefvanschie.inventoryframework</groupId>
+			<artifactId>IF</artifactId>
+			<version>0.10.7</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.spigotmc</groupId>
 			<artifactId>spigot-api</artifactId>
@@ -161,6 +259,11 @@
 					<groupId>org.yaml</groupId>
 				</exclusion>
 			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.mini2Dx</groupId>
+			<artifactId>gettext-lib</artifactId>
+			<version>1.11.0</version>
 		</dependency>
 		<dependency>
 			<!-- https://bstats.org/getting-started/include-metrics -->
@@ -278,6 +381,12 @@
 			<version>1.0</version>
 			<scope>provided</scope>
 		</dependency>-->
+		<dependency>
+			<groupId>com.github.LoneDev6</groupId>
+			<artifactId>api-itemsadder</artifactId>
+			<version>3.2.5</version>
+			<scope>provided</scope>
+		</dependency>
 		<dependency>
 			<!-- https://www.spigotmc.org/resources/mythiclib.90306/history -->
 			<groupId>io.lumine</groupId>

@@ -1,6 +1,7 @@
 package com.dre.brewery.lore;
 
 import com.dre.brewery.recipe.BEffect;
+import com.dre.brewery.recipe.BPotionEffect;
 import com.dre.brewery.BIngredients;
 import com.dre.brewery.recipe.BRecipe;
 import com.dre.brewery.Brew;
@@ -147,8 +148,9 @@ public class BrewLore {
 		if (brew.getDistillRuns() <= 0) return;
 		String prefix;
 		byte distillRuns = brew.getDistillRuns();
+		int quality = brew.getIngredients().getDistillQuality(brew.getCurrentRecipe(), distillRuns);
 		if (qualityColor && !brew.isUnlabeled() && brew.hasRecipe()) {
-			prefix = getQualityColor(brew.getIngredients().getDistillQuality(brew.getCurrentRecipe(), distillRuns));
+			prefix = getQualityColor(quality);
 		} else {
 			prefix = "§7";
 		}
@@ -173,6 +175,7 @@ public class BrewLore {
 		if (brew.isStripped()) return;
 		String prefix;
 		float age = brew.getAgeTime();
+		int quality = brew.getIngredients().getAgeQuality(brew.getCurrentRecipe(), age);
 		if (qualityColor && !brew.isUnlabeled() && brew.hasRecipe()) {
 			prefix = getQualityColor(brew.getIngredients().getAgeQuality(brew.getCurrentRecipe(), age));
 		} else {
@@ -181,7 +184,7 @@ public class BrewLore {
 		if (!brew.isUnlabeled()) {
 			if (age >= 1 && age < 2) {
 				prefix = prefix + P.p.languageReader.get("Brew_OneYear") + " ";
-			} else if (age < 201) {
+			} else if (age < 301) {
 				prefix = prefix + (int) Math.floor(age) + " " + P.p.languageReader.get("Brew_Years") + " ";
 			} else {
 				prefix = prefix + P.p.languageReader.get("Brew_HundredsOfYears") + " ";
@@ -328,9 +331,22 @@ public class BrewLore {
 	 * @param line The Line of Lore to add or replace
  	 */
 	public int addOrReplaceLore(Type type, String prefix, String line) {
+		return addOrReplaceLore(type, prefix, line, "");
+	}
+
+	/**
+	 * Adds or replaces a line of Lore.
+	 * <p>Searches for type and if not found for Substring lore and replaces it
+	 *
+	 * @param type The Type of BrewLore to replace
+	 * @param prefix The Prefix to add to the line of lore
+	 * @param line The Line of Lore to add or replace
+	 * @param suffix The Suffix to add to the line of lore
+	 */
+	public int addOrReplaceLore(Type type, String prefix, String line, String suffix) {
 		int index = type.findInLore(lore);
 		if (index > -1) {
-			lore.set(index, type.id + prefix + line);
+			lore.set(index, type.id + prefix + line + suffix);
 			return index;
 		}
 
@@ -339,7 +355,7 @@ public class BrewLore {
 		if (index > -1) {
 			lore.remove(index);
 		}
-		return addLore(type, prefix, line);
+		return addLore(type, prefix, line, suffix);
 	}
 
 	/**
@@ -348,17 +364,28 @@ public class BrewLore {
 	 * @param type The Type of BrewLore to add
 	 * @param prefix The Prefix to add to the line of lore
 	 * @param line The Line of Lore to add or add
- 	 */
+	 */
 	public int addLore(Type type, String prefix, String line) {
+		return addLore(type, prefix, line, "");
+	}
+	/**
+	 * Adds a line of Lore in the correct ordering
+	 *
+	 * @param type The Type of BrewLore to add
+	 * @param prefix The Prefix to add to the line of lore
+	 * @param line The Line of Lore to add or add
+	 * @param suffix The Suffix to add to the line of lore
+	 */
+	public int addLore(Type type, String prefix, String line, String suffix) {
 		lineAddedOrRem = true;
 		for (int i = 0; i < lore.size(); i++) {
 			Type existing = Type.get(lore.get(i));
 			if (existing != null && existing.isAfter(type)) {
-				lore.add(i, type.id + prefix + line);
+				lore.add(i, type.id + prefix + line + suffix);
 				return i;
 			}
 		}
-		lore.add(type.id + prefix + line);
+		lore.add(type.id + prefix + line + suffix);
 		return lore.size() - 1;
 	}
 
@@ -511,10 +538,32 @@ public class BrewLore {
 	}
 
 	/**
+	 * Gets the icon representing a quality for use in lore
+	 *
+	 * @param quality The quality used for the icon
+	 * @return The icon for the given quality
+	 */
+	public static char getQualityIcon(int quality) {
+		char icon;
+		if (quality > 8) {
+			icon = '\u2605';
+		} else if (quality > 6) {
+			icon = '\u2BEA';
+		} else if (quality > 4) {
+			icon = '\u2606';
+		} else if (quality > 2) {
+			icon = '\u2718';
+		} else {
+			icon = '\u2620';
+		}
+		return icon;
+	}
+
+	/**
 	 * Type of Lore Line
 	 */
 	public enum Type {
-		CUSTOM("§t"),
+		CUSTOM("§5§o"),
 		SPACE("§u"),
 
 		STARS("§s"),
@@ -523,7 +572,8 @@ public class BrewLore {
 		DISTILL("§p"),
 		AGE("§y"),
 		WOOD("§z"),
-		ALC("§q");
+		ALC("§q"),
+		ERROR("§o");
 
 		public final String id;
 
