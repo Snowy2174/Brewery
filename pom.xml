@@ -374,6 +374,12 @@
 			<version>RC-32</version>
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.github.LoneDev6</groupId>
+			<artifactId>api-itemsadder</artifactId>
+			<version>3.2.5</version>
+			<scope>provided</scope>
+		</dependency>
 		<!--<dependency>
 			Contains proprietary api that we use for integration
 			<groupId>com.dre</groupId>
