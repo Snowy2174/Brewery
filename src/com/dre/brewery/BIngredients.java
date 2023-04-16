@@ -162,7 +162,7 @@ public class BIngredients {
 			PotionColor.CYAN.colorBrew(potionMeta, potion, true);
 		}
 
-		potionMeta.setDisplayName(P.p.color("&f" + cookedName));
+		potionMeta.setDisplayName(P.p.color("&6" + cookedName));
 		//if (!P.use1_14) {
 			// Before 1.14 the effects duration would strangely be only a quarter of what we tell it to be
 			// This is due to the Duration Modifier, that is removed in 1.14

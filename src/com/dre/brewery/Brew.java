@@ -633,13 +633,13 @@ public class Brew implements Cloneable {
 			quality = calcQuality();
 
 			lore.addOrReplaceEffects(getEffects(), quality);
-			potionMeta.setDisplayName(P.p.color("&f" + recipe.getName(quality)));
+			potionMeta.setDisplayName(P.p.color("&6" + recipe.getName(quality)));
 			recipe.getColor().colorBrew(potionMeta, slotItem, canDistill());
 
 		} else {
 			quality = 0;
 			lore.removeEffects();
-			potionMeta.setDisplayName(P.p.color("&f" + P.p.languageReader.get("Brew_DistillUndefined")));
+			potionMeta.setDisplayName(P.p.color("&6" + P.p.languageReader.get("Brew_DistillUndefined")));
 			PotionColor.GREY.colorBrew(potionMeta, slotItem, canDistill());
 		}
 		alc = calcAlcohol();
@@ -706,7 +706,7 @@ public class Brew implements Cloneable {
 				quality = calcQuality();
 
 				lore.addOrReplaceEffects(getEffects(), quality);
-				potionMeta.setDisplayName(P.p.color("&f" + recipe.getName(quality)));
+				potionMeta.setDisplayName(P.p.color("&6" + recipe.getName(quality)));
 				recipe.getColor().colorBrew(potionMeta, item, canDistill());
 			} else {
 				quality = 0;
@@ -804,7 +804,7 @@ public class Brew implements Cloneable {
 
 		recipe.getColor().colorBrew(potionMeta, potion, false);
 		updateCustomModelData(potionMeta);
-		potionMeta.setDisplayName(P.p.color("&f" + recipe.getName(quality)));
+		potionMeta.setDisplayName(P.p.color("&6" + recipe.getName(quality)));
 		//if (!P.use1_14) {
 		// Before 1.14 the effects duration would strangely be only a quarter of what we tell it to be
 		// This is due to the Duration Modifier, that is removed in 1.14
